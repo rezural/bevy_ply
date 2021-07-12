@@ -6,9 +6,9 @@ use bevy_asset::AddAsset;
 
 /// Adds support for Obj file loading to Apps
 #[derive(Default)]
-pub struct ObjPlugin;
+pub struct PlyPlugin;
 
-impl Plugin for ObjPlugin {
+impl Plugin for PlyPlugin {
     fn build(&self, app: &mut AppBuilder) {
         app.init_asset_loader::<PlyLoader>();
     }

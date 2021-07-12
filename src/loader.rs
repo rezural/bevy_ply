@@ -45,32 +45,43 @@ async fn load_obj<'a, 'b>(
     Ok(())
 }
 
-fn load_obj_from_bytes(bytes: &[u8], mesh: &mut Mesh) -> Result<(), ObjError> {
+fn load_obj_from_bytes(
+    bytes: &[u8],
+    mesh: &mut Mesh,
+) -> Result<(), ObjError> {
     let mut reader = bytes.reader();
-    let parser = ply_rs::parser::Parser::<ply_rs::ply::DefaultElement>::new();
-    let result = parser
-        .read_ply(&mut reader)
-        .expect("Could not read ply file");
 
+    // Create a parser for each struct. Parsers are cheap objects.
     let vertex_parser = parser::Parser::<VertexWithNormal>::new();
     let face_parser = parser::Parser::<Face>::new();
+
+    // lets first consume the header
+    // We also could use `face_parser`, The configuration is a parser's only state.
+    // The reading position only depends on `f`.
+    let header = vertex_parser.read_header(&mut reader);
 
     let mut vertex_normal_list = Vec::new();
     let mut face_list = Vec::new();
 
-    for (_, element) in result.header.elements.clone() {
-        match element.name.as_ref() {
-            "vertex" => {
-                vertex_normal_list = vertex_parser
-                    .read_payload_for_element(&mut reader, &element, &result.header)
-                    .unwrap();
+    if let Ok(header) = &header {
+        for (_, element) in &header.elements {
+            match element.name.as_ref() {
+                "vertex" => {
+                    let vnl =
+                        vertex_parser.read_payload_for_element(&mut reader, &element, &header);
+                    match vnl {
+                        Ok(vnl) => vertex_normal_list = vnl,
+                        Err(e) => println!("Vertex Err: {:?}", e),
+                    }
+                }
+                "face" => {
+                    match face_parser.read_payload_for_element(&mut reader, &element, &header) {
+                        Ok(vnl) => face_list = vnl,
+                        Err(e) => println!("Face Err: {:?}", e),
+                    }
+                }
+                _ => {}
             }
-            "face" => {
-                face_list = face_parser
-                    .read_payload_for_element(&mut reader, &element, &result.header)
-                    .unwrap();
-            }
-            _ => panic!("Enexpeced element!"),
         }
     }
 
@@ -105,27 +116,47 @@ fn load_obj_from_bytes(bytes: &[u8], mesh: &mut Mesh) -> Result<(), ObjError> {
                 })
                 .collect();
             set_normal_data(mesh, normals_list);
+        } else {
+            let normals_list: Vec<[f32; 3]> = vertex_list.iter().map(|_| [0., 1., 0.]).collect();
+            set_normal_data(mesh, normals_list);
         }
+    }
+
+    if true {
+        let vertex_uv_data = vec![[0.0, 0.0, 0.0]; vertex_normal_list.len()];
+        set_uv_data(mesh, vertex_uv_data)
     }
     Ok(())
 }
 
-fn set_position_data(mesh: &mut Mesh, data: Vec<[f32; 3]>) {
+fn set_position_data(
+    mesh: &mut Mesh,
+    data: Vec<[f32; 3]>,
+) {
     let positions = VertexAttributeValues::Float3(data);
     mesh.set_attribute(Mesh::ATTRIBUTE_POSITION, positions);
 }
 
-fn set_normal_data(mesh: &mut Mesh, data: Vec<[f32; 3]>) {
+fn set_normal_data(
+    mesh: &mut Mesh,
+    data: Vec<[f32; 3]>,
+) {
     let normals = VertexAttributeValues::Float3(data);
     mesh.set_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
 }
 
-fn _set_uv_data(mesh: &mut Mesh, data: Vec<[f32; 3]>) {
+fn set_uv_data(
+    mesh: &mut Mesh,
+    data: Vec<[f32; 3]>,
+) {
     let uvs = VertexAttributeValues::Float3(data);
     mesh.set_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
 }
 
-fn set_mesh_indices(mesh: &mut Mesh, indices: Vec<u32>) {
+fn set_mesh_indices(
+    mesh: &mut Mesh,
+    indices: Vec<u32>,
+) {
     mesh.set_indices(Some(Indices::U32(indices)));
 }
 
@@ -163,7 +194,11 @@ impl ply::PropertyAccess for VertexWithNormal {
             ..Default::default()
         }
     }
-    fn set_property(&mut self, key: String, property: ply::Property) {
+    fn set_property(
+        &mut self,
+        key: String,
+        property: ply::Property,
+    ) {
         match (key.as_ref(), property) {
             ("x", ply::Property::Float(v)) => self.vertex.x = v,
             ("y", ply::Property::Float(v)) => self.vertex.y = v,
@@ -191,7 +226,11 @@ impl ply::PropertyAccess for Vertex {
             ..Default::default()
         }
     }
-    fn set_property(&mut self, key: String, property: ply::Property) {
+    fn set_property(
+        &mut self,
+        key: String,
+        property: ply::Property,
+    ) {
         match (key.as_ref(), property) {
             ("x", ply::Property::Float(v)) => self.x = v,
             ("y", ply::Property::Float(v)) => self.y = v,
@@ -208,7 +247,11 @@ impl ply::PropertyAccess for Face {
             ..Default::default()
         }
     }
-    fn set_property(&mut self, key: String, property: ply::Property) {
+    fn set_property(
+        &mut self,
+        key: String,
+        property: ply::Property,
+    ) {
         match (key.as_ref(), property) {
             ("vertex_index", ply::Property::ListInt(vec)) => {
                 self.vertex_index = vec.iter().map(|&fi| fi as u32).collect()
