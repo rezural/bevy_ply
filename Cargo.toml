@@ -1,0 +1,27 @@
+[package]
+name = "bevy_ply"
+version = "0.1.0"
+authors = ["Rezural <rezural@protonmail.com>"]
+edition = "2018"
+license = "MIT"
+description = "A Stanford .ply file reader"
+repository = "https://github.com/rezural/bevy_ply"
+readme = "README.md"
+
+[dependencies]
+bevy_app = "0.5"
+bevy_asset = "0.5"
+bevy_render = "0.5"
+bevy_utils = "0.5"
+anyhow = "1"
+thiserror = "1"
+ply-rs = "0.1"
+bytes = "1"
+# obj-rs = { version = "0.6", default-features = false }
+
+[dev-dependencies]
+bevy = "0.5"
+
+[[example]]
+name = "render_ply"
+path = "example/render_ply.rs"
