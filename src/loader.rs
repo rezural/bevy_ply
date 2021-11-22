@@ -1,3 +1,5 @@
+use std::ops::{Deref, DerefMut};
+
 use anyhow::Result;
 use bevy_asset::{AssetLoader, LoadContext, LoadedAsset};
 use bevy_render::{
@@ -173,11 +175,25 @@ impl VertexWithNormal {
         }
     }
 }
-#[derive(Default, Clone, Copy)]
+#[derive(Default, Clone, Copy, Debug)]
 struct Vertex {
     x: f32,
     y: f32,
     z: f32,
+}
+
+impl Deref for Vertex {
+    type Target = Vertex;
+
+    fn deref(&self) -> &Self::Target {
+        &self
+    }
+}
+
+impl DerefMut for Vertex {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self
+    }
 }
 
 #[derive(Default)]
@@ -205,15 +221,15 @@ impl ply::PropertyAccess for VertexWithNormal {
             ("z", ply::Property::Float(v)) => self.vertex.z = v,
             ("nx", ply::Property::Float(v)) => {
                 self.create_optional_normal();
-                self.normal.unwrap().x = v;
+                self.normal.as_deref_mut().unwrap().x = v;
             }
             ("ny", ply::Property::Float(v)) => {
                 self.create_optional_normal();
-                self.normal.unwrap().y = v;
+                self.normal.as_deref_mut().unwrap().y = v;
             }
             ("nz", ply::Property::Float(v)) => {
                 self.create_optional_normal();
-                self.normal.unwrap().z = v;
+                self.normal.as_deref_mut().unwrap().z = v;
             }
             (_, _) => {}
         }
